@@ -1,0 +1,5 @@
+Flask
+flask-cors
+ultralytics
+huggingface_hub
+gunicorn
