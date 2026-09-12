@@ -641,7 +641,7 @@ backgroundColor: "rgba(255, 0, 0, 0.15)",
 
     try {
       const response = await fetch(
-        "https://hyderabad-urban-intelligence-api.onrender.com/",
+        "https://hyderabad-urban-intelligence-api.onrender.com/api/pothole-detect",
         {
           method: "POST",
           body: formData,
@@ -792,7 +792,7 @@ setSelectedImage("https://hyderabad-urban-intelligence-api.onrender.com/");
   formData.append("image", blob, "camera.jpg");
  
   const vehicleResponse = await fetch(
-  "https://hyderabad-urban-intelligence-api.onrender.com/",
+  "https://hyderabad-urban-intelligence-api.onrender.com/api/vehicle-detect",
   {
     method: "POST",
     body: formData,
@@ -809,7 +809,7 @@ alert(
 
   try {
     const response = await fetch(
-      "https://hyderabad-urban-intelligence-api.onrender.com/",
+      "https://hyderabad-urban-intelligence-api.onrender.com/api/pothole-detect",
       {
         method: "POST",
         body: formData,
@@ -825,7 +825,7 @@ alert(
     );
     try{
     const garbageResponse = await fetch(
-      "https://hyderabad-urban-intelligence-api.onrender.com/",
+      "https://hyderabad-urban-intelligence-api.onrender.com/api/garbage-detect",
       {
         method: "POST",
         body: formData,
