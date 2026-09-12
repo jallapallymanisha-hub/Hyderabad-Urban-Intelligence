@@ -178,74 +178,69 @@ def garbage_detect():
             "garbage_count": len(detections),
             "detections": detections
         })
-# -----------------------------------
+    # -----------------------------------
 # POTHOLE DETECTION
 # -----------------------------------
 
 @app.route("/api/pothole-detect", methods=["POST"])
 def pothole_detect():
 
-    from src.pothole_ai.pothole_detector import detect_potholes
+    try:
+        from src.pothole_ai.pothole_detector import detect_potholes
 
-    if "image" not in request.files:
+        if "image" not in request.files:
+            return jsonify({
+                "error": "No image uploaded"
+            }), 400
+
+        image = request.files["image"]
+
+        project_root = Path(__file__).resolve().parents[2]
+
+        pothole_folder = project_root / "src" / "pothole_ai"
+        pothole_folder.mkdir(parents=True, exist_ok=True)
+
+        filename = f"{uuid.uuid4().hex}_{image.filename}"
+        image_path = pothole_folder / filename
+
+        image.save(str(image_path))
+
+        detections = detect_potholes(str(image_path))
 
         return jsonify({
-            "error": "No image uploaded"
-        }), 400
+            "detections": detections
+        })
 
-    image = request.files["image"]
+    except Exception as e:
 
-    filename = f"{uuid.uuid4().hex}_{image.filename}"
+        print("POTHOLE ERROR:", repr(e))
 
-    image_path = os.path.join(
-        "src",
-        "pothole_ai",
-        filename
-    )
+        return jsonify({
+            "error": str(e)
+        }), 500
 
-    image.save(image_path)
-
-    detections = detect_potholes(
-        image_path
-    )
-
-    return jsonify({
-
-        "detections": detections,
-
-        "image": "/api/pothole-result"
-    })
-
-
-# -----------------------------------
+        # -----------------------------------
 # POTHOLE RESULT
 # -----------------------------------
 
 @app.route("/api/pothole-result")
 def pothole_result():
 
-    image_path = os.path.join(
+    project_root = Path(__file__).resolve().parents[2]
 
-        os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(__file__)
-            )
-        ),
+    result_folder = project_root / "runs" / "detect" / "predict"
 
-        "runs",
-        "detect",
-        "predict",
-        "Pothole.jpg"
-    )
+    image_path = result_folder / "Pothole.jpg"
+
+    if not image_path.exists():
+        return jsonify({
+            "error": "Pothole result image not found"
+        }), 404
 
     return send_file(
-
-        image_path,
-
+        str(image_path),
         mimetype="image/jpeg"
     )
-
-
 # -----------------------------------
 # START FLASK
 # -----------------------------------
@@ -255,5 +250,5 @@ if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
         port=int(os.environ.get("PORT", 5000)),
-        debug=False
+        debug=True
     )

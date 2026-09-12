@@ -16,7 +16,7 @@ const [trafficData, setTrafficData] = useState(null);
 useEffect(() => {
     const getTrafficData = async () => {
       try {
-        const response = await fetch("https://hyderabad-urban-intelligence-api.onrender.com/api/traffic");
+        const response = await fetch("http://127.0.0.1:5000/api/traffic");
         const data = await response.json();
         setTrafficData(data);
       } catch (error) {
@@ -610,7 +610,8 @@ backgroundColor: "rgba(255, 0, 0, 0.15)",
             </section>
 
           </>
-        )}{/* ================= POTHOLE DETECTION ================= */}
+        )}
+        {/* ================= POTHOLE DETECTION ================= */}
 
 {activePage === "Pothole Detection" && (
   <>
@@ -620,69 +621,89 @@ backgroundColor: "rgba(255, 0, 0, 0.15)",
 
     <section className="section-card">
 
-      <h2>
-        🕳️ AI Pothole Detection
-      </h2>
+      <h2>🕳️ AI Pothole Detection</h2>
 
       <p>
         Upload a road image to detect potholes using AI.
       </p>
 
-<input
-  type="file"
-  accept="image/*"
-  onChange={async (event) => {
-    const file = event.target.files[0];
+      <input
+        type="file"
+        accept="image/*"
+        onChange={async (event) => {
+          const file = event.target.files?.[0];
 
-    if (!file) return;
+          if (!file) {
+            return;
+          }
 
-    const formData = new FormData();
-    formData.append("image", file);
+          const formData = new FormData();
+          formData.append("image", file);
 
-    try {
-      const response = await fetch(
-        "https://hyderabad-urban-intelligence-api.onrender.com/api/pothole-detect",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+          try {
+            const response = await fetch(
+              "http://127.0.0.1:5000/api/pothole-detect",
+              {
+                method: "POST",
+                body: formData,
+              }
+            );
 
-      const data = await response.json();
+            if (!response.ok) {
+              throw new Error(
+                `Pothole API returned ${response.status}`
+              );
+            }
 
-      console.log("Pothole detection result:", data);
+            const data = await response.json();
 
-     setDetections(data.detections);
-     console.log(data);
-const imageUrl = URL.createObjectURL(file);
+            console.log("Pothole detection result:", data);
 
-const img = new Image();
+            setDetections(data.detections || []);
 
-img.onload = () => {
-  setImageDimensions({
-    width: img.naturalWidth,
-    height: img.naturalHeight
-  });
-};
+            const imageUrl = URL.createObjectURL(file);
 
-img.src = imageUrl;
-setSelectedImage("https://hyderabad-urban-intelligence-api.onrender.com/");
+            const img = new Image();
 
-    } catch (error) {
-      console.error("Pothole detection error:", error);
-      alert("Could not connect to Pothole AI.");
-    }
-  }}
-/>{selectedImage && (
+            img.onload = () => {
+              setImageDimensions({
+                width: img.naturalWidth,
+                height: img.naturalHeight,
+              });
+
+              URL.revokeObjectURL(imageUrl);
+            };
+
+            img.src = imageUrl;
+
+            setSelectedImage(
+              "http://127.0.0.1:5000/api/pothole-result"
+            );
+
+          } catch (error) {
+            console.error("Pothole detection error:", error);
+
+            setDetections([]);
+
+            alert(
+              "Could not connect to Pothole AI. Make sure Flask is running."
+            );
+          }
+        }}
+      />
+
+      {selectedImage && (
         <div style={{ marginTop: "20px" }}>
+
           <h3>AI Detection Result</h3>
 
           <img
             src={selectedImage}
-            alt="Pothole detection"
+            alt="Pothole detection result"
             style={{
               maxWidth: "100%",
-              borderRadius: "10px"
+              borderRadius: "10px",
+              marginTop: "10px",
             }}
           />
 
@@ -690,12 +711,17 @@ setSelectedImage("https://hyderabad-urban-intelligence-api.onrender.com/");
             Detected Potholes: {detections.length}
           </h3>
 
-          {detections.map((detection, index) => (
-            <p key={index}>
-              🕳️ Pothole {index + 1} — Confidence:{" "}
-              {detection.confidence}%
-            </p>
-          ))}
+          {detections.length > 0 ? (
+            detections.map((detection, index) => (
+              <p key={index}>
+                🕳️ Pothole {index + 1} — Confidence:{" "}
+                {detection.confidence}%
+              </p>
+            ))
+          ) : (
+            <p>No potholes detected.</p>
+          )}
+
         </div>
       )}
 
@@ -792,7 +818,7 @@ setSelectedImage("https://hyderabad-urban-intelligence-api.onrender.com/");
   formData.append("image", blob, "camera.jpg");
  
   const vehicleResponse = await fetch(
-  "https://hyderabad-urban-intelligence-api.onrender.com/api/vehicle-detect",
+  "http://127.0.0.1:5000/api/vehicle-detect",
   {
     method: "POST",
     body: formData,
@@ -809,7 +835,7 @@ alert(
 
   try {
     const response = await fetch(
-      "https://hyderabad-urban-intelligence-api.onrender.com/api/pothole-detect",
+      "http://127.0.0.1:5000/api/pothole-detect",
       {
         method: "POST",
         body: formData,
@@ -825,7 +851,7 @@ alert(
     );
     try{
     const garbageResponse = await fetch(
-      "https://hyderabad-urban-intelligence-api.onrender.com/api/garbage-detect",
+      "http://127.0.0.1:5000/api/garbage-detect",
       {
         method: "POST",
         body: formData,
