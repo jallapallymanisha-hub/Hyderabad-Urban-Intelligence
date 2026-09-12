@@ -16,7 +16,7 @@ const [trafficData, setTrafficData] = useState(null);
 useEffect(() => {
     const getTrafficData = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:5000/api/traffic");
+        const response = await fetch("https://hyderabad-urban-intelligence-api.onrender.com/api/traffic");
         const data = await response.json();
         setTrafficData(data);
       } catch (error) {
@@ -338,9 +338,9 @@ useEffect(() => {
             Current Congestion Score
           </span>
 
-          <h1>
-            {trafficData.congestion_score}%
-          </h1>
+          <h1 style={{ color: "#111827", fontSize: "38px", fontWeight: "700" }}>
+  {trafficData.congestion_score}%
+</h1>
 
           <strong>
             {trafficData.congestion_level}
@@ -641,7 +641,7 @@ backgroundColor: "rgba(255, 0, 0, 0.15)",
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:5000/api/pothole-detect",
+        "https://hyderabad-urban-intelligence-api.onrender.com/",
         {
           method: "POST",
           body: formData,
@@ -666,7 +666,7 @@ img.onload = () => {
 };
 
 img.src = imageUrl;
-setSelectedImage("http://127.0.0.1:5000/api/pothole-result");
+setSelectedImage("https://hyderabad-urban-intelligence-api.onrender.com/");
 
     } catch (error) {
       console.error("Pothole detection error:", error);
@@ -792,7 +792,7 @@ setSelectedImage("http://127.0.0.1:5000/api/pothole-result");
   formData.append("image", blob, "camera.jpg");
  
   const vehicleResponse = await fetch(
-  "http://127.0.0.1:5000/api/vehicle-detect",
+  "https://hyderabad-urban-intelligence-api.onrender.com/",
   {
     method: "POST",
     body: formData,
@@ -809,7 +809,7 @@ alert(
 
   try {
     const response = await fetch(
-      "http://127.0.0.1:5000/api/pothole-detect",
+      "https://hyderabad-urban-intelligence-api.onrender.com/",
       {
         method: "POST",
         body: formData,
@@ -825,7 +825,7 @@ alert(
     );
     try{
     const garbageResponse = await fetch(
-      "http://127.0.0.1:5000/api/garbage-detect",
+      "https://hyderabad-urban-intelligence-api.onrender.com/",
       {
         method: "POST",
         body: formData,
@@ -1078,7 +1078,7 @@ alert(
                 className="primary-button"
                 onClick={async () => {
                 const trafficResponse = await fetch(
-                 "http://127.0.0.1:5000/api/traffic"
+                 "https://hyderabad-urban-intelligence-api.onrender.com/"
                 );
 
                  const trafficData = await trafficResponse.json();
