@@ -14,12 +14,12 @@ def get_pothole_model():
 
     return model
 
-
 def detect_potholes(image_path):
-    get_pothole_model().predict(
+    results = get_pothole_model().predict(
         source=image_path,
         conf=0.25,
-        save=True
+        save=False,
+        imgsz=320
     )
 
     detections = []
