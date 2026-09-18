@@ -3,3 +3,6 @@ flask-cors
 ultralytics
 huggingface_hub
 gunicorn
+requests
+easyocr
+opencv-python-headless
