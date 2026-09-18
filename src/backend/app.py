@@ -18,10 +18,29 @@ from ultralytics import YOLO
 
 
 # Vehicle detection model
-vehicle_model = YOLO("yolo11n.pt")
-plate_model = YOLO("weights/license_plate.pt")
+# AI models are loaded only when required
+vehicle_model = None
+plate_model = None
+plate_reader = None
+def get_vehicle_model():
+    global vehicle_model
+    if vehicle_model is None:
+        vehicle_model = YOLO("yolo11n.pt")
+    return vehicle_model
 
-plate_reader = easyocr.Reader(["en"], gpu=False)
+
+def get_plate_model():
+    global plate_model
+    if plate_model is None:
+        plate_model = YOLO("weights/license_plate.pt")
+    return plate_model
+
+
+def get_plate_reader():
+    global plate_reader
+    if plate_reader is None:
+        plate_reader = easyocr.Reader(["en"], gpu=False)
+    return plate_reader
 
 app = Flask(__name__)
 garbage_alerts = []
@@ -135,10 +154,10 @@ def vehicle_detect():
 
     image.save(temp_path)
 
-    results = vehicle_model.predict(
-        source=temp_path,
-        conf=0.25
-    )
+   results = get_vehicle_model().predict(
+    source=temp_path,
+    conf=0.25
+)
 
     vehicles = []
 
@@ -193,10 +212,10 @@ def plate_detect():
 
     image.save(temp_path)
 
-    results = plate_model.predict(
-        source=temp_path,
-        conf=0.25
-    )
+   results = get_plate_model().predict(
+    source=temp_path,
+    conf=0.25
+   )
 
     plates = []
 
@@ -215,9 +234,9 @@ def plate_detect():
 
             plate_crop = image_cv[y1:y2, x1:x2]
 
-            ocr_results = plate_reader.readtext(
-                plate_crop
-            )
+           ocr_results = get_plate_reader().readtext(
+           plate_crop
+           )
 
             plate_text = ""
             ocr_confidence = 0
@@ -264,9 +283,9 @@ def rash_driving():
     temp_path = "rash_camera.jpg"
     image.save(temp_path)
 
-    results = vehicle_model.predict(
-        source=temp_path,
-        conf=0.25
+    results = get_vehicle_model().predict(
+    source=temp_path,
+    conf=0.25
     )
 
     detected_vehicles = []
