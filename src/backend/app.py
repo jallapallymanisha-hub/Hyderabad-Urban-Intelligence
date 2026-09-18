@@ -154,10 +154,10 @@ def vehicle_detect():
 
     image.save(temp_path)
 
-   results = get_vehicle_model().predict(
-    source=temp_path,
-    conf=0.25
-)
+    results = get_vehicle_model().predict(
+        source=temp_path,
+        conf=0.25
+    )
 
     vehicles = []
 
@@ -212,10 +212,10 @@ def plate_detect():
 
     image.save(temp_path)
 
-   results = get_plate_model().predict(
-    source=temp_path,
-    conf=0.25
-   )
+    results = get_plate_model().predict(
+        source=temp_path,
+        conf=0.25
+    )
 
     plates = []
 
@@ -234,9 +234,9 @@ def plate_detect():
 
             plate_crop = image_cv[y1:y2, x1:x2]
 
-           ocr_results = get_plate_reader().readtext(
-           plate_crop
-           )
+            ocr_results = get_plate_reader().readtext(
+            plate_crop
+            )
 
             plate_text = ""
             ocr_confidence = 0
