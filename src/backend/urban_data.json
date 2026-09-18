@@ -1,0 +1,46 @@
+{
+  "incidents": [
+    {
+      "id": "ec5219b6-928c-4485-b4b1-5869c9d9c479",
+      "type": "Pothole",
+      "severity": "Medium",
+      "location": "Hyderabad",
+      "description": "2 pothole(s) detected by AI.",
+      "timestamp": "2026-09-16T11:54:14.413864",
+      "status": "New"
+    },
+    {
+      "id": "cb2cad38-c0e7-4b4a-ab71-ea04360543c5",
+      "type": "Garbage",
+      "severity": "Medium",
+      "location": "Hyderabad",
+      "description": "1 garbage item(s) detected by AI.",
+      "timestamp": "2026-09-16T12:19:02.632100",
+      "status": "New"
+    }
+  ],
+  "alerts": [
+    {
+      "id": "054215e6-7fcb-422a-acb8-f6874b84713e",
+      "incident_id": "ec5219b6-928c-4485-b4b1-5869c9d9c479",
+      "type": "Pothole",
+      "severity": "Medium",
+      "location": "Hyderabad",
+      "message": "2 pothole(s) detected by AI.",
+      "timestamp": "2026-09-16T11:54:14.413864",
+      "status": "New"
+    },
+    {
+      "id": "e5822923-8e6b-4cdd-a92a-db3dda1aef1b",
+      "incident_id": "cb2cad38-c0e7-4b4a-ab71-ea04360543c5",
+      "type": "Garbage",
+      "severity": "Medium",
+      "location": "Hyderabad",
+      "message": "1 garbage item(s) detected by AI.",
+      "timestamp": "2026-09-16T12:19:02.632100",
+      "status": "New"
+    }
+  ],
+  "road_conditions": [],
+  "traffic_history": []
+}

@@ -13,6 +13,10 @@ const [imageDimensions, setImageDimensions] = useState({
   height: 1
 });
 const [trafficData, setTrafficData] = useState(null);
+const [alerts, setAlerts] = useState([]);
+const [vehicleCount, setVehicleCount] = useState(null);
+const [simulatedVehicles, setSimulatedVehicles] = useState(50);
+const [simulationResult, setSimulationResult] = useState(null);
 useEffect(() => {
     const getTrafficData = async () => {
       try {
@@ -25,6 +29,17 @@ useEffect(() => {
     };
 
     getTrafficData();
+    const getAlerts = async () => {
+  try {
+    const response = await fetch("http://127.0.0.1:5000/api/alerts");
+    const data = await response.json();
+    setAlerts(data);
+  } catch (error) {
+    console.error("Alerts API error:", error);
+  }
+};
+
+getAlerts();
 
     const interval = setInterval(getTrafficData, 5000);
 
@@ -39,6 +54,7 @@ useEffect(() => {
   { name: "Routes", icon: "🗺️" },
   { name: "Alerts", icon: "🔔" },
   { name: "Fitness & Sports", icon: "🏃" },
+  { name: "Traffic Simulator", icon: "🚦" },
 ];
 
  const buses = [
@@ -199,12 +215,33 @@ useEffect(() => {
   }));
 
   const highDemandBuses = buses.filter(
-    (bus) => bus.status === "High Demand"
+    (bus) => bus.passengers >=80
   );
 
   const delayedBuses = buses.filter(
     (bus) => bus.status === "Delayed"
   );
+  const runTrafficSimulation = () => {
+  const currentVehicles = trafficData?.vehicle_count || 50;
+  const change = simulatedVehicles - currentVehicles;
+  const predictedScore = Math.max(
+    0,
+    Math.min(100, (trafficData?.congestion_score || 50) + change * 0.5)
+  );
+
+  setSimulationResult({
+    vehicles: simulatedVehicles,
+    score: Math.round(predictedScore),
+    level:
+      predictedScore < 30
+        ? "Low"
+        : predictedScore < 60
+        ? "Moderate"
+        : predictedScore < 80
+        ? "High"
+        : "Severe",
+  });
+};
 
   const getStatusClass = (status) => {
     if (status === "Delayed") return "badge yellow";
@@ -347,13 +384,12 @@ useEffect(() => {
           </strong>
 
           <p>
-            🚗 Vehicles: {trafficData.vehicle_count}
+          🚗 Current Speed: {trafficData.current_speed} km/h
           </p>
 
           <p>
-            🚘 Average Speed: {trafficData.average_speed} km/h
+          🚘 Free Flow Speed: {trafficData.free_flow_speed} km/h
           </p>
-
         </div>
       ) : (
         <p>
@@ -829,6 +865,8 @@ const vehicleData = await vehicleResponse.json();
 
 console.log("Vehicle Detection:", vehicleData);
 
+setVehicleCount(vehicleData.vehicle_count);
+
 alert(
   `Vehicles detected: ${vehicleData.vehicle_count}`
 );
@@ -862,13 +900,13 @@ alert(
 
     console.log("Garbage Detection:", garbageData);
 
-    if (garbageData.garbage_count > 0) {
+    if (garbageData.detections && garbageData.detections.length > 0) {
       const newGarbageAlert = {
         id: Date.now(),
         type: "GARBAGE",
         message:
           `🗑️ Garbage detected by camera. ` +
-          `${garbageData.garbage_count} waste object(s) found.`,
+          `${garbageData.detections.length} waste object(s) found.`,
         time: new Date().toLocaleTimeString(),
       };
 
@@ -878,7 +916,7 @@ alert(
       ]);
 
       alert(
-        `🗑️ Garbage detected: ${garbageData.garbage_count}`
+`🗑️ Garbage detected: ${garbageData.detections.length}`
       );
     } else {
       alert("✅ No garbage detected.");
@@ -1035,7 +1073,113 @@ alert(
 
           </>
         )}
+       
+       {activePage === "Traffic Simulator" && (
+  <>
+    <h2 className="page-title">
+      🚦 What-If Traffic Simulator
+    </h2>
 
+    <section className="section-card">
+      <h2>🔮 Simulate Traffic Changes</h2>
+
+      <p>
+        See how changing vehicle volume could affect Hyderabad traffic.
+      </p>
+
+      <div className="route-card">
+        <div>
+          <h3>🚗 Simulated Vehicles</h3>
+
+          <input
+            type="range"
+            min="10"
+            max="150"
+            value={simulatedVehicles}
+            onChange={(e) =>
+              setSimulatedVehicles(Number(e.target.value))
+            }
+          />
+
+          <p>
+            <strong>{simulatedVehicles}</strong> vehicles
+          </p>
+        </div>
+      </div>
+
+      <button
+        className="primary-button"
+        onClick={runTrafficSimulation}
+      >
+        🚦 Run Simulation
+      </button>
+
+      {simulationResult && (
+        <div className="route-card">
+          <div className="route-icon">📊</div>
+
+          <div>
+            <h3>Current vs Predicted Traffic</h3>
+
+            <p style={{ fontSize: "18px" }}>
+              📍 Current Score:{" "}
+              <strong>
+                {trafficData?.congestion_score ?? "N/A"}/100
+              </strong>
+            </p>
+
+            <p style={{ fontSize: "18px" }}>
+              🔮 Predicted Score:{" "}
+              <strong>
+                {simulationResult.score}/100
+              </strong>{" "}
+              {simulationResult.score >
+              (trafficData?.congestion_score ?? 0)
+                ? "🔺"
+                : simulationResult.score <
+                  (trafficData?.congestion_score ?? 0)
+                ? "🔻"
+                : "➡️"}
+            </p>
+
+            <p style={{ fontSize: "18px" }}>
+              🚦 Traffic Change:{" "}
+              <strong
+                style={{
+                  color:
+                    simulationResult.score >
+                    (trafficData?.congestion_score ?? 0)
+                      ? "#ef4444"
+                      : simulationResult.score <
+                        (trafficData?.congestion_score ?? 0)
+                      ? "#22c55e"
+                      : "#f59e0b"
+                }}
+              >
+                {simulationResult.score >
+                (trafficData?.congestion_score ?? 0)
+                  ? "🔴 Increased"
+                  : simulationResult.score <
+                    (trafficData?.congestion_score ?? 0)
+                  ? "🟢 Improved"
+                  : "🟡 No Change"}
+              </strong>
+            </p>
+
+            <p style={{ fontSize: "18px" }}>
+              📈 Predicted Level:{" "}
+              <strong>{simulationResult.level}</strong>
+            </p>
+
+            <small>
+              🚗 Scenario: {simulationResult.vehicles} simulated vehicles
+            </small>
+          </div>
+        </div>
+      )}
+    </section>
+  </>
+)}
         {/* ================= ROUTES ================= */}
 
         {activePage === "Routes" && (
@@ -1187,7 +1331,7 @@ alert(
                 <span className="alert-total">
                  {highDemandBuses.length +
                    delayedBuses.length +
-                   garbageAlerts.length} Active 
+                   alerts.length} Active 
                Alerts
               </span>
               </div>
@@ -1298,6 +1442,36 @@ alert(
 
     </div>
 
+  </div>
+))}
+{/* BACKEND AI ALERTS */}
+
+{alerts.map((alert) => (
+  <div
+    className="alert-card yellow-alert"
+    key={alert.id}
+  >
+    <span className="alert-icon">
+      {alert.type === "Pothole" ? "🕳️" : "🗑️"}
+    </span>
+
+    <div>
+      <h3>
+        {alert.type} Detected
+      </h3>
+
+      <p>
+        {alert.message}
+      </p>
+
+      <small>
+        📍 {alert.location}
+      </small>
+
+      <small>
+        🕒 {new Date(alert.timestamp).toLocaleString()}
+      </small>
+    </div>
   </div>
 ))}
 
@@ -1426,8 +1600,8 @@ alert(
             </p>
 
             <small>
-              Average Speed:{" "}
-              {trafficData?.average_speed ?? "Loading..."} km/h
+            Current Speed:{" "}
+            {trafficData?.current_speed ?? "Loading..."} km/h
             </small>
           </div>
 
@@ -1471,17 +1645,16 @@ alert(
         </div>
 
         <div className="route-card">
-          <div className="route-icon">🚗</div>
-
-          <div>
-            <h3>Vehicles Detected</h3>
-
-            <p>
-              {trafficData?.vehicle_count ?? "Loading..."}
-              {" "}vehicles
-            </p>
-          </div>
-        </div>
+  <div className="route-icon">🚗</div>
+  <div>
+    <h3>Vehicles Detected</h3>
+    <p>
+      {vehicleCount !== null
+        ? `${vehicleCount} vehicles detected by AI`
+        : "Capture a frame to detect vehicles"}
+    </p>
+  </div>
+  </div>
 
         <div className="route-card">
           <div className="route-icon">⚡</div>
@@ -1490,8 +1663,9 @@ alert(
             <h3>Traffic Score</h3>
 
             <p>
-              {trafficData?.congestion_score ?? "Loading..."}
-              /100
+            {trafficData && typeof trafficData.congestion_score === "number"
+            ? `${trafficData.congestion_score.toFixed(2)}/100`
+            : "Loading..."}
             </p>
           </div>
         </div>

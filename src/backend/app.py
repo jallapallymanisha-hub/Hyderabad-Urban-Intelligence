@@ -1,8 +1,14 @@
 import sys
 from pathlib import Path
 import os
+import requests
 import random
 import uuid
+import json
+import easyocr
+import cv2
+import time
+from datetime import datetime
 
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
@@ -13,9 +19,66 @@ from ultralytics import YOLO
 
 # Vehicle detection model
 vehicle_model = YOLO("yolo11n.pt")
+plate_model = YOLO("weights/license_plate.pt")
 
+plate_reader = easyocr.Reader(["en"], gpu=False)
 
 app = Flask(__name__)
+garbage_alerts = []
+# Rash driving tracking
+previous_vehicle_positions = {}
+rash_driving_alerts = []
+DATA_FILE = Path(__file__).resolve().parent / "urban_data.json"
+
+def load_data():
+    if not DATA_FILE.exists():
+        return {
+            "incidents": [],
+            "alerts": [],
+            "road_conditions": [],
+            "traffic_history": []
+        }
+
+    with open(DATA_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_data(data):
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+
+def create_incident(incident_type, severity, location, description):
+    data = load_data()
+
+    incident = {
+        "id": str(uuid.uuid4()),
+        "type": incident_type,
+        "severity": severity,
+        "location": location,
+        "description": description,
+        "timestamp": datetime.now().isoformat(),
+        "status": "New"
+    }
+
+    data["incidents"].append(incident)
+
+    alert = {
+        "id": str(uuid.uuid4()),
+        "incident_id": incident["id"],
+        "type": incident_type,
+        "severity": severity,
+        "location": location,
+        "message": description,
+        "timestamp": incident["timestamp"],
+        "status": "New"
+    }
+
+    data["alerts"].append(alert)
+
+    save_data(data)
+
+    return incident
 CORS(app)
 
 
@@ -33,7 +96,16 @@ def calculate_congestion(vehicle_count, average_speed):
 
     return round(min(score, 100), 2)
 
+@app.route("/api/incidents")
+def get_incidents():
+    data = load_data()
+    return jsonify(data["incidents"])
 
+
+@app.route("/api/alerts")
+def get_alerts():
+    data = load_data()
+    return jsonify(data["alerts"])
 # -----------------------------------
 # HOME
 # -----------------------------------
@@ -103,81 +175,307 @@ def vehicle_detect():
         "vehicle_count": len(vehicles),
         "vehicles": vehicles
     })
+# -----------------------------------
+# NUMBER PLATE DETECTION + OCR
+# -----------------------------------
 
+@app.route("/api/plate-detect", methods=["POST"])
+def plate_detect():
 
+    if "image" not in request.files:
+        return jsonify({
+            "error": "No image uploaded"
+        }), 400
+
+    image = request.files["image"]
+
+    temp_path = "plate_camera.jpg"
+
+    image.save(temp_path)
+
+    results = plate_model.predict(
+        source=temp_path,
+        conf=0.25
+    )
+
+    plates = []
+
+    image_cv = cv2.imread(temp_path)
+
+    for result in results:
+
+        for box in result.boxes:
+
+            confidence = float(box.conf[0])
+
+            x1, y1, x2, y2 = [
+                int(x)
+                for x in box.xyxy[0].tolist()
+            ]
+
+            plate_crop = image_cv[y1:y2, x1:x2]
+
+            ocr_results = plate_reader.readtext(
+                plate_crop
+            )
+
+            plate_text = ""
+            ocr_confidence = 0
+
+            if ocr_results:
+
+                best_result = max(
+                    ocr_results,
+                    key=lambda item: item[2]
+                )
+
+                plate_text = best_result[1]
+                ocr_confidence = best_result[2] * 100
+
+            plates.append({
+                "plate": plate_text,
+                "detection_confidence": round(
+                    confidence * 100, 2
+                ),
+                "ocr_confidence": round(
+                    ocr_confidence, 2
+                ),
+                "box": [x1, y1, x2, y2]
+            })
+
+    return jsonify({
+        "plate_count": len(plates),
+        "plates": plates
+    })
+# -----------------------------------
+# RASH DRIVING DETECTION
+# -----------------------------------
+
+@app.route("/api/rash-driving", methods=["POST"])
+def rash_driving():
+
+    if "image" not in request.files:
+        return jsonify({
+            "error": "No image uploaded"
+        }), 400
+
+    image = request.files["image"]
+
+    temp_path = "rash_camera.jpg"
+    image.save(temp_path)
+
+    results = vehicle_model.predict(
+        source=temp_path,
+        conf=0.25
+    )
+
+    detected_vehicles = []
+
+    vehicle_classes = {
+        2: "car",
+        3: "motorcycle",
+        5: "bus",
+        7: "truck"
+    }
+
+    for result in results:
+
+        for box in result.boxes:
+
+            class_id = int(box.cls[0])
+
+            if class_id in vehicle_classes:
+
+                confidence = float(box.conf[0])
+
+                x1, y1, x2, y2 = [
+                    int(x)
+                    for x in box.xyxy[0].tolist()
+                ]
+
+                center_x = (x1 + x2) // 2
+                center_y = (y1 + y2) // 2
+
+                detected_vehicles.append({
+                    "label": vehicle_classes[class_id],
+                    "confidence": round(
+                        confidence * 100, 2
+                    ),
+                    "center": [
+                        center_x,
+                        center_y
+                    ],
+                    "box": [
+                        x1,
+                        y1,
+                        x2,
+                        y2
+                    ]
+                })
+
+        motion_results = []
+
+    for vehicle in detected_vehicles:
+
+        vehicle_id = vehicle["label"]
+
+        current_x, current_y = vehicle["center"]
+
+        previous = previous_vehicle_positions.get(vehicle_id)
+
+        motion_score = 0
+
+        if previous:
+            previous_x, previous_y = previous["center"]
+            previous_time = previous["time"]
+
+            distance = (
+                (current_x - previous_x) ** 2
+                + (current_y - previous_y) ** 2
+            ) ** 0.5
+
+            elapsed_time = time.time() - previous_time
+
+            if elapsed_time > 0:
+                motion_score = distance / elapsed_time
+
+        previous_vehicle_positions[vehicle_id] = {
+            "center": vehicle["center"],
+            "time": time.time()
+        }
+
+        motion_results.append({
+            **vehicle,
+            "motion_score": round(motion_score, 2)
+        })
+
+    return jsonify({
+        "vehicle_count": len(motion_results),
+        "vehicles": motion_results,
+        "timestamp": time.time()
+    })
 # -----------------------------------
 # TRAFFIC DATA
 # -----------------------------------
 
 @app.route("/api/traffic")
 def traffic():
+    try:
+        api_key = os.getenv("TOMTOM_API_KEY")
 
-    vehicle_count = random.randint(20, 100)
+        if not api_key:
+            return jsonify({
+                "error": "TomTom API key not found"
+            }), 500
 
-    average_speed = random.randint(10, 45)
+        url = "https://api.tomtom.com/traffic/services/4/flowSegmentData/relative/10/json"
 
-    congestion_score = calculate_congestion(
-        vehicle_count,
-        average_speed
-    )
+        params = {
+            "key": api_key,
+            "point": "17.3850,78.4867",
+            "unit": "KMPH"
+        }
 
-    if congestion_score < 30:
+        response = requests.get(
+            url,
+            params=params,
+            timeout=15
+        )
 
-        level = "Low"
+        if response.status_code != 200:
+            return jsonify({
+                "error": "TomTom API request failed",
+                "status": response.status_code
+            }), response.status_code
 
-    elif congestion_score < 60:
+        tomtom_data = response.json()["flowSegmentData"]
 
-        level = "Moderate"
+        current_speed = tomtom_data["currentSpeed"]
+        free_flow_speed = tomtom_data["freeFlowSpeed"]
 
-    elif congestion_score < 80:
+        if free_flow_speed > 0:
+            congestion_score = round(
+                (1 - (current_speed / free_flow_speed)) * 100,
+                2
+            )
+        else:
+            congestion_score = 0
 
-        level = "High"
+        congestion_score = max(0, min(congestion_score, 100))
 
-    else:
+        if congestion_score < 25:
+            level = "Low"
+        elif congestion_score < 50:
+            level = "Moderate"
+        elif congestion_score < 75:
+            level = "High"
+        else:
+            level = "Severe"
 
-        level = "Severe"
+        return jsonify({
+            "city": "Hyderabad",
+            "current_speed": current_speed,
+            "free_flow_speed": free_flow_speed,
+            "congestion_score": congestion_score,
+            "congestion_level": level,
+            "current_travel_time": tomtom_data["currentTravelTime"],
+            "free_flow_travel_time": tomtom_data["freeFlowTravelTime"],
+            "confidence": tomtom_data["confidence"],
+            "road_closure": tomtom_data["roadClosure"],
+            "data_source": "TomTom Traffic Flow"
+        })
 
-    return jsonify({
+    except requests.exceptions.RequestException as e:
+        print("TOMTOM CONNECTION ERROR:", repr(e))
 
-        "city": "Hyderabad",
+        return jsonify({
+            "error": "Could not connect to TomTom Traffic API"
+        }), 503
 
-        "vehicle_count": vehicle_count,
+    except Exception as e:
+        print("TRAFFIC ERROR:", repr(e))
 
-        "average_speed": average_speed,
-
-        "congestion_score": congestion_score,
-
-        "congestion_level": level
-    })
+        return jsonify({
+            "error": str(e)
+        }), 500
 @app.route("/api/garbage-detect", methods=["POST"])
 def garbage_detect():
 
-        from src.garbage_ai.garbage_detector import detect_garbage
+    from src.garbage_ai.garbage_detector import detect_garbage
 
-        if "image" not in request.files:
-
-            return jsonify({
-                "error": "No image uploaded"
-            }), 400
-
-        image = request.files["image"]
-
-        filename = f"{uuid.uuid4().hex}_{image.filename}"
-
-        image_path = os.path.join(
-            "src",
-            "garbage_ai",
-            filename
-        )
-
-        image.save(image_path)
-
-        detections = detect_garbage(image_path)
-
+    if "image" not in request.files:
         return jsonify({
-            "garbage_count": len(detections),
-            "detections": detections
-        })
+            "error": "No image uploaded"
+        }), 400
+
+    image = request.files["image"]
+
+    filename = f"{uuid.uuid4().hex}_{image.filename}"
+
+    image_path = os.path.join(
+        "src",
+        "garbage_ai",
+        filename
+    )
+
+    image.save(image_path)
+
+    detections = detect_garbage(image_path)
+
+    if detections:
+        alert = {
+            "id": str(uuid.uuid4()),
+            "type": "Garbage",
+            "message": f"{len(detections)} garbage object(s) detected",
+            "location": "Hyderabad",
+            "timestamp": datetime.now().isoformat()
+        }
+
+        garbage_alerts.append(alert)
+
+    return jsonify({
+        "detections": detections
+    })
     # -----------------------------------
 # POTHOLE DETECTION
 # -----------------------------------
@@ -206,6 +504,15 @@ def pothole_detect():
         image.save(str(image_path))
 
         detections = detect_potholes(str(image_path))
+        if detections:
+            severity = "High" if len(detections) >= 3 else "Medium"
+
+            create_incident(
+                incident_type="Pothole",
+                severity=severity,
+                location="Hyderabad",
+                description=f"{len(detections)} pothole(s) detected by AI."
+            )
 
         return jsonify({
             "detections": detections
