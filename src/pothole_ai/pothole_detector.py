@@ -3,11 +3,20 @@ from ultralytics import YOLO
 # Pothole detection model
 MODEL_URL = "https://huggingface.co/peterhdd/pothole-detection-yolov8/resolve/main/best.pt"
 
-model = YOLO(MODEL_URL)
+model = None
+
+
+def get_pothole_model():
+    global model
+
+    if model is None:
+        model = YOLO(MODEL_URL)
+
+    return model
 
 
 def detect_potholes(image_path):
-    results = model.predict(
+    get_pothole_model().predict(
         source=image_path,
         conf=0.25,
         save=True
