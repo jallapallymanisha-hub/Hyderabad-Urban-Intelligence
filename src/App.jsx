@@ -20,7 +20,7 @@ const [simulationResult, setSimulationResult] = useState(null);
 useEffect(() => {
     const getTrafficData = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:5000/api/traffic");
+        const response = await fetch("https://hyderabad-urban-intelligence-backend.onrender.com/api/traffic");
         const data = await response.json();
         setTrafficData(data);
       } catch (error) {
@@ -31,7 +31,7 @@ useEffect(() => {
     getTrafficData();
     const getAlerts = async () => {
   try {
-    const response = await fetch("http://127.0.0.1:5000/api/alerts");
+    const response = await fetch("https://hyderabad-urban-intelligence-backend.onrender.com/api/alerts");
     const data = await response.json();
     setAlerts(data);
   } catch (error) {
@@ -678,7 +678,7 @@ backgroundColor: "rgba(255, 0, 0, 0.15)",
 
           try {
             const response = await fetch(
-              "http://127.0.0.1:5000/api/pothole-detect",
+              "https://hyderabad-urban-intelligence-backend.onrender.com/api/pothole-detect",
               {
                 method: "POST",
                 body: formData,
@@ -713,7 +713,7 @@ backgroundColor: "rgba(255, 0, 0, 0.15)",
             img.src = imageUrl;
 
             setSelectedImage(
-              "http://127.0.0.1:5000/api/pothole-result"
+              "https://hyderabad-urban-intelligence-backend.onrender.com/api/pothole-result"
             );
 
           } catch (error) {
@@ -854,7 +854,7 @@ backgroundColor: "rgba(255, 0, 0, 0.15)",
   formData.append("image", blob, "camera.jpg");
  
   const vehicleResponse = await fetch(
-  "http://127.0.0.1:5000/api/vehicle-detect",
+  "https://hyderabad-urban-intelligence-backend.onrender.com/api/vehicle-detect",
   {
     method: "POST",
     body: formData,
@@ -873,7 +873,7 @@ alert(
 
   try {
     const response = await fetch(
-      "http://127.0.0.1:5000/api/pothole-detect",
+      "https://hyderabad-urban-intelligence-backend.onrender.com/api/pothole-detect",
       {
         method: "POST",
         body: formData,
@@ -889,7 +889,7 @@ alert(
     );
     try{
     const garbageResponse = await fetch(
-      "http://127.0.0.1:5000/api/garbage-detect",
+      "https://hyderabad-urban-intelligence-backend.onrender.com/api/garbage-detect",
       {
         method: "POST",
         body: formData,
