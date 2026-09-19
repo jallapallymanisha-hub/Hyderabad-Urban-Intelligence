@@ -5,8 +5,6 @@ import requests
 import random
 import uuid
 import json
-import easyocr
-import cv2
 import time
 from datetime import datetime
 
@@ -14,8 +12,6 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
-from ultralytics import YOLO
-
 
 # Vehicle detection model
 # AI models are loaded only when required
@@ -24,22 +20,30 @@ plate_model = None
 plate_reader = None
 def get_vehicle_model():
     global vehicle_model
+
     if vehicle_model is None:
+        from ultralytics import YOLO
         vehicle_model = YOLO("yolo11n.pt")
+
     return vehicle_model
 
 
 def get_plate_model():
     global plate_model
-    if plate_model is None:
-        plate_model = YOLO("weights/license_plate.pt")
-    return plate_model
 
+    if plate_model is None:
+        from ultralytics import YOLO
+        plate_model = YOLO("weights/license_plate.pt")
+
+    return plate_model
 
 def get_plate_reader():
     global plate_reader
+
     if plate_reader is None:
+        import easyocr
         plate_reader = easyocr.Reader(["en"], gpu=False)
+
     return plate_reader
 
 app = Flask(__name__)
