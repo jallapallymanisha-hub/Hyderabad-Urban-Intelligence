@@ -1,0 +1,7 @@
+node_modules/
+dist/
+runs/
+src/pothole_ai/*.jpg
+src/pothole_ai/*.jpeg
+src/pothole_ai/*.png
+src/pothole_ai/*.webp
